@@ -35,21 +35,28 @@ import javax.xml.parsers.SAXParserFactory;
 public class DownloadWebpageTask extends AsyncTask<String, Void, List<Entry>> {
     private static final String DEBUG_TAG = "AsyncTask";
     private static final String ns = null;
+    private static String url = null;
+
 
     @Override
     protected List<Entry> doInBackground(String... urls) {
 
         try {
+            url = urls[0];
+            Log.d(DEBUG_TAG, "url " + url);
             return downloadUrl();
         } catch (IOException e) {
             e.printStackTrace();
             Log.d(DEBUG_TAG, "URL may be invalid");
-        } catch (XmlPullParserException e) {
-            e.printStackTrace();
         } catch (ParserConfigurationException e) {
             e.printStackTrace();
+            Log.d(DEBUG_TAG, "parserconf exception");
         } catch (SAXException e) {
             e.printStackTrace();
+            Log.d(DEBUG_TAG, "saxparser exception");
+        } catch (XmlPullParserException e) {
+            e.printStackTrace();
+            Log.d(DEBUG_TAG, "xmlparser exception");
         }
         return null;
     }
@@ -63,7 +70,7 @@ public class DownloadWebpageTask extends AsyncTask<String, Void, List<Entry>> {
         Log.d(DEBUG_TAG, "download news started");
         HttpClient httpclient = new DefaultHttpClient();
         httpclient.getParams().setParameter(CoreProtocolPNames.PROTOCOL_VERSION, HttpVersion.HTTP_1_1);
-        HttpGet request = new HttpGet("http://feeds.bbci.co.uk/news/rss.xml");
+        HttpGet request = new HttpGet(url);
         HttpResponse response = httpclient.execute(request);
         HttpEntity resEntity = response.getEntity();
 
@@ -74,11 +81,11 @@ public class DownloadWebpageTask extends AsyncTask<String, Void, List<Entry>> {
         parser.parse(resEntity.getContent(), saxp);
 
         Log.d(DEBUG_TAG, "size = "+saxp.entries.size());
-        for (int i = 0; i < saxp.entries.size(); i++) {
-            if (!saxp.entries.get(i).url.equals("")) {
-                saxp.entries.get(i).image = downloadBitmap(saxp.entries.get(i).url);
-            }
-        }
+//        for (int i = 0; i < saxp.entries.size(); i++) {
+//            if (!saxp.entries.get(i).url.equals("")) {
+//                saxp.entries.get(i).image = downloadBitmap(saxp.entries.get(i).url);
+//            }
+//        }
 
         return saxp.entries;
     }

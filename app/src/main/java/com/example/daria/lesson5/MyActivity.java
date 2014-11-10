@@ -67,39 +67,15 @@ public class MyActivity extends Activity {
         buttonBBC.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Toast.makeText(MyActivity.this, "Please, wait", Toast.LENGTH_SHORT).show();
-                ConnectivityManager connMgr = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-                NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
-
-                if (networkInfo != null && networkInfo.isConnected()) {
-                    new DownloadWebpageTask() {
-                        @Override
-                        protected void onPostExecute(List<Entry> result) {
-                            Log.d(DEBUG_TAG, "onPostExecute.." + result.size());
-                            // Метод 2: INSERT через SQL-запрос
-                            db = new MySQLiteDatabase(MyActivity.this);
-                            database = db.getWritableDatabase();
-                            for (int i = 0; i < result.size(); i++) {
-                                Log.d(DEBUG_TAG, "insert");
-                                ContentValues cv = new ContentValues();
-                                cv.put(MySQLiteDatabase.COLUMN_TITLE, result.get(i).title);
-                                cv.put(MySQLiteDatabase.COLUMN_LINK, result.get(i).link);
-                                cv.put(MySQLiteDatabase.COLUMN_DESCRIPTION, result.get(i).description);
-                                cv.put(MySQLiteDatabase.COLUMN_URL, result.get(i).url);
-                                database.insert(MySQLiteDatabase.TABLE_NAME, null, cv);
-                            }
-                            addToList();
-                            list.setAdapter(adapter);
-                        }
-                    }.execute();
-                } else {
-                    Toast.makeText(MyActivity.this, "No network connection", Toast.LENGTH_SHORT).show();
-                    Log.d(DEBUG_TAG, "no network connection");
-                }
+                toClick("http://feeds.bbci.co.uk/news/rss.xml");
             }
         });
-        db.close();
-        database.close();
+        buttonBash.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                toClick("http://bash.im/rss/");
+            }
+        });
     }
     public void addToList() {
         String query = "SELECT * FROM " + MySQLiteDatabase.TABLE_NAME;
@@ -114,4 +90,34 @@ public class MyActivity extends Activity {
         cursor.close();
     }
 
+    public void toClick(String url) {
+        Toast.makeText(MyActivity.this, "Please, wait", Toast.LENGTH_SHORT).show();
+        ConnectivityManager connMgr = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
+
+        if (networkInfo != null && networkInfo.isConnected()) {
+            new DownloadWebpageTask() {
+                @Override
+                protected void onPostExecute(List<Entry> result) {
+                    Log.d(DEBUG_TAG, "onPostExecute.." + result.size());
+                    db = new MySQLiteDatabase(MyActivity.this);
+                    database = db.getWritableDatabase();
+                    for (int i = 0; i < result.size(); i++) {
+                        Log.d(DEBUG_TAG, "insert");
+                        ContentValues cv = new ContentValues();
+                        cv.put(MySQLiteDatabase.COLUMN_TITLE, result.get(i).title);
+                        cv.put(MySQLiteDatabase.COLUMN_LINK, result.get(i).link);
+                        cv.put(MySQLiteDatabase.COLUMN_DESCRIPTION, result.get(i).description);
+                        cv.put(MySQLiteDatabase.COLUMN_URL, result.get(i).url);
+                        database.insert(MySQLiteDatabase.TABLE_NAME, null, cv);
+                    }
+                    addToList();
+                    list.setAdapter(adapter);
+                }
+            }.execute(url);
+        } else {
+            Toast.makeText(MyActivity.this, "No network connection", Toast.LENGTH_SHORT).show();
+            Log.d(DEBUG_TAG, "no network connection");
+        }
+    }
 }
