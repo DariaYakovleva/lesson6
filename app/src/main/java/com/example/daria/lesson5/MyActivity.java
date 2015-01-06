@@ -22,7 +22,8 @@ import java.util.List;
 public class MyActivity extends Activity {
 
     Button buttonBBC;
-    Button buttonBash;
+    Button buttonMsk;
+    Button buttonStack;
     Button deleteAll;
     MyAdapter adapter;
     public static final String DEBUG_TAG = "MyActivity";
@@ -35,7 +36,8 @@ public class MyActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_my);
         buttonBBC = (Button) findViewById(R.id.button3);
-        buttonBash = (Button) findViewById(R.id.button4);
+        buttonMsk = (Button) findViewById(R.id.button4);
+        buttonStack = (Button) findViewById(R.id.button6);
         deleteAll = (Button) findViewById(R.id.button5);
         list = (ListView) findViewById(R.id.list);
         db = new MySQLiteDatabase(MyActivity.this);
@@ -70,10 +72,17 @@ public class MyActivity extends Activity {
                 toClick("http://feeds.bbci.co.uk/news/rss.xml");
             }
         });
-        buttonBash.setOnClickListener(new View.OnClickListener() {
+        buttonStack.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                toClick("http://bash.im/rss/");
+                toClick("http://stackoverflow.com/feeds/tag/android");
+            }
+        });
+        buttonMsk.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+//                toClick("http://bash.im/rss/");
+                toClick("http://echo.msk.ru/interview/rss-fulltext.xml");
             }
         });
     }

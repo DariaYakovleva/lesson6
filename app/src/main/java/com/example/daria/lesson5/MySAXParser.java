@@ -38,7 +38,7 @@ public class MySAXParser extends DefaultHandler {
     @Override
     public void startElement(String namespaceURI, String localName, String qName, Attributes atts) throws SAXException {
         if (cnt > N) return;
-        if (qName.equals("item"))
+        if (qName.equals("item") || qName.equals("entry"))
             item = true;
         name = qName;
         if (name.equals("media:thumbnail")) {
@@ -53,9 +53,9 @@ public class MySAXParser extends DefaultHandler {
 
         if (name.equals("title")) {
             title += new String(ch, start, length);
-        } else if (name.equals("description")) {
+        } else if (name.equals("description") || name.equals("summary")) {
             description += new String(ch, start, length);
-        } else if (name.equals("link")) {
+        } else if (name.equals("link") || name.equals("id")) {
             link += new String(ch, start, length);
         }
     }
@@ -63,7 +63,7 @@ public class MySAXParser extends DefaultHandler {
     @Override
     public void endElement(String namespaceURI, String localName, String qName) throws SAXException {
         if (cnt > N) return;
-        if (qName.equals("item")) {
+        if (qName.equals("item") || qName.equals("entry")) {
             item = false;
             entries.add(new Entry(title, description, link, url));
             cnt++;
