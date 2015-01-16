@@ -4,65 +4,40 @@ import java.util.ArrayList;
 import java.util.List;
 
 import android.content.Context;
+import android.database.Cursor;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
+import android.widget.CursorAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-public class MyAdapter extends BaseAdapter {
-    Context ctx;
-    LayoutInflater lInflater;
-    List<Entry> list = new ArrayList<Entry>();
+/**
+ * Created by Daria on 29.11.2014.
+ */
 
-    MyAdapter(Context context) {
-        ctx = context;
-        lInflater = (LayoutInflater) ctx.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-    }
+public class MyAdapter extends CursorAdapter {
 
-    public void addEntry(Entry a) {
-        list.add(a);
-    }
-    public void deleteAll() {
-        list.clear();
-    }
-    @Override
-    public int getCount() {
-        return list.size();
+    MyAdapter(Context context, Cursor cur) {
+        super(context, cur);
     }
 
     @Override
-    public Object getItem(int position) {
-        return list.get(position);
-    }
-
-    @Override
-    public long getItemId(int position) {
-        return position;
-    }
-
-    @Override
-    public View getView(int position, View convertView, ViewGroup parent) {
-        View view = convertView;
-        if (view == null) {
-            view = lInflater.inflate(R.layout.my_item, parent, false);
-        }
-
-        final Entry p = getIt(position);
-
-        ((TextView) view.findViewById(R.id.descr)).setText(p.description);
-        ((TextView) view.findViewById(R.id.title)).setText(p.title + "");
-        ((ImageView) view.findViewById(R.id.image)).setImageBitmap(p.image);
-
+    public View newView(Context context, Cursor cursor, ViewGroup parent) {
+        LayoutInflater inflater = LayoutInflater.from(context);
+        View view = inflater.inflate(R.layout.my_item, parent, false);
         return view;
     }
 
-    public String getLink(int position) {
-        return list.get(position).link;
+    @Override
+    public void bindView(View view, Context context, Cursor cursor) {
+        ((TextView) view.findViewById(R.id.descr)).setText(cursor.getString(cursor.getColumnIndex(MySQLiteDatabase.COLUMN_DESCRIPTION)));
+        ((TextView) view.findViewById(R.id.title)).setText(cursor.getString(cursor.getColumnIndex(MySQLiteDatabase.COLUMN_TITLE)));
     }
 
     Entry getIt(int position) {
-        return ((Entry) getItem(position));
+        return (Entry)(getItem(position));
     }
 }
+

@@ -25,6 +25,10 @@
                 <category android:name="android.intent.category.DEFAULT"></category>
             </intent-filter>
         </activity>
+        <provider
+            android:name="com.example.daria.lesson5.MySQLiteDatabase"
+            android:authorities="com.example.daria.lesson5.providers.entries"></provider>
+        <service android:name="com.example.daria.lesson5.MyIntentService" />
     </application>
 
 </manifest>

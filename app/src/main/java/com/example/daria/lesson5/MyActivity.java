@@ -1,102 +1,142 @@
 package com.example.daria.lesson5;
 
 import android.app.Activity;
+import android.app.LoaderManager;
+import android.content.BroadcastReceiver;
+import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.CursorLoader;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.Loader;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.SimpleCursorAdapter;
+import android.widget.Spinner;
+import android.widget.TextView;
 import android.widget.Toast;
 
+import java.util.ArrayList;
 import java.util.List;
 
 
-public class MyActivity extends Activity {
+public class MyActivity extends Activity implements LoaderManager.LoaderCallbacks<Cursor> {
 
-    Button buttonBBC;
-    Button buttonMsk;
-    Button buttonStack;
+    Button add;
+    EditText text;
     Button deleteAll;
     MyAdapter adapter;
+    Spinner spinner;
     public static final String DEBUG_TAG = "MyActivity";
     ListView list;
-    MySQLiteDatabase db;
-    SQLiteDatabase database;
+    private static final Uri DB_URI = Uri.parse("content://com.example.daria.lesson5.providers.entries/entries");
+    private static final int LOADER_ID = 1;
+    private LoaderManager.LoaderCallbacks<Cursor> mCallbacks;
+    MyBroadcastReceiver myBroadcastReceiver;
+    List<String> links = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        mCallbacks = this;
+
+        LoaderManager lm = getLoaderManager();
+        lm.initLoader(LOADER_ID, null, mCallbacks);
+
         setContentView(R.layout.activity_my);
-        buttonBBC = (Button) findViewById(R.id.button3);
-        buttonMsk = (Button) findViewById(R.id.button4);
-        buttonStack = (Button) findViewById(R.id.button6);
+        add = (Button) findViewById(R.id.add);
+        text = (EditText) findViewById(R.id.editText);
         deleteAll = (Button) findViewById(R.id.button5);
+        spinner = (Spinner) findViewById(R.id.spinner);
+        links.add("http://feeds.bbci.co.uk/news/rss.xml");
+        links.add("http://stackoverflow.com/feeds/tag/android");
+        links.add("http://echo.msk.ru/interview/rss-fulltext.xml");
+        final CustomAdapter sAdapter = new CustomAdapter(this, android.R.layout.simple_spinner_item, links);
+        sAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(sAdapter);
         list = (ListView) findViewById(R.id.list);
-        db = new MySQLiteDatabase(MyActivity.this);
-        database = db.getWritableDatabase();
-        adapter = new MyAdapter(MyActivity.this);
+        adapter = new MyAdapter(this, null);
         list.setAdapter(adapter);
-        addToList();
+        myBroadcastReceiver = new MyBroadcastReceiver();
+
         Log.d(DEBUG_TAG, "set adapter");
         list.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int position, long l) {
-                Log.d(DEBUG_TAG, "link = " + adapter.getLink(position));
+                Cursor cur = adapter.getCursor();
+                cur.moveToPosition(position);
+                String link = cur.getString(cur.getColumnIndex(MySQLiteDatabase.COLUMN_LINK));
+                Log.d(DEBUG_TAG, "link = " + link);
                 Intent intent = new Intent(MyActivity.this, BrowserActivity.class);
-                intent.putExtra("url", adapter.getLink(position));
+                intent.putExtra("url", link);
                 startActivity(intent);
+            }
+        });
+        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+            }
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view,
+                                       int pos, long id) {
+                toClick(sAdapter.getEntry(pos));
+                CustomAdapter.flag = true;
             }
         });
         deleteAll.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                db = new MySQLiteDatabase(MyActivity.this);
-                database = db.getWritableDatabase();
-                adapter.deleteAll();
-                list.setAdapter(adapter);
-                db.deleteAll(database);
+                String where = "_id > 0";
+                getContentResolver().delete(DB_URI, where, null);
 
             }
         });
-        buttonBBC.setOnClickListener(new View.OnClickListener() {
+        text.setText("");
+        add.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                toClick("http://feeds.bbci.co.uk/news/rss.xml");
-            }
-        });
-        buttonStack.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                toClick("http://stackoverflow.com/feeds/tag/android");
-            }
-        });
-        buttonMsk.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-//                toClick("http://bash.im/rss/");
-                toClick("http://echo.msk.ru/interview/rss-fulltext.xml");
+                String link = text.getText().toString();
+                if (!link.isEmpty() && !link.contentEquals("bash.im/rss")) {
+                    sAdapter.addObject(link);
+                    sAdapter.notifyDataSetChanged();
+                    toClick(link);
+                } else {
+                    Toast.makeText(MyActivity.this, "Bad link", Toast.LENGTH_SHORT).show();
+                }
             }
         });
     }
-    public void addToList() {
-        String query = "SELECT * FROM " + MySQLiteDatabase.TABLE_NAME;
-        Log.d(DEBUG_TAG, "add to list");
-        Cursor cursor = database.rawQuery(query, null);
-        while (cursor.moveToNext()) {
-            adapter.addEntry(new Entry(cursor.getString(cursor.getColumnIndex(MySQLiteDatabase.COLUMN_TITLE)),
-                    cursor.getString(cursor.getColumnIndex(MySQLiteDatabase.COLUMN_DESCRIPTION)),
-                    cursor.getString(cursor.getColumnIndex(MySQLiteDatabase.COLUMN_LINK)),
-                    cursor.getString(cursor.getColumnIndex(MySQLiteDatabase.COLUMN_URL))));
+
+    @Override
+    public Loader<Cursor> onCreateLoader(int id, Bundle args) {
+        return new CursorLoader(MyActivity.this, DB_URI,
+                null, null, null, null);
+    }
+
+    @Override
+    public void onLoadFinished(Loader<Cursor> loader, Cursor cursor) {
+        switch (loader.getId()) {
+            case LOADER_ID:
+                adapter.swapCursor(cursor);
+                break;
         }
-        cursor.close();
+    }
+
+    @Override
+    public void onLoaderReset(Loader<Cursor> loader) {
+        adapter.swapCursor(null);
     }
 
     public void toClick(String url) {
@@ -105,28 +145,40 @@ public class MyActivity extends Activity {
         NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
 
         if (networkInfo != null && networkInfo.isConnected()) {
-            new DownloadWebpageTask() {
-                @Override
-                protected void onPostExecute(List<Entry> result) {
-                    Log.d(DEBUG_TAG, "onPostExecute.." + result.size());
-                    db = new MySQLiteDatabase(MyActivity.this);
-                    database = db.getWritableDatabase();
-                    for (int i = 0; i < result.size(); i++) {
-                        Log.d(DEBUG_TAG, "insert");
-                        ContentValues cv = new ContentValues();
-                        cv.put(MySQLiteDatabase.COLUMN_TITLE, result.get(i).title);
-                        cv.put(MySQLiteDatabase.COLUMN_LINK, result.get(i).link);
-                        cv.put(MySQLiteDatabase.COLUMN_DESCRIPTION, result.get(i).description);
-                        cv.put(MySQLiteDatabase.COLUMN_URL, result.get(i).url);
-                        database.insert(MySQLiteDatabase.TABLE_NAME, null, cv);
-                    }
-                    addToList();
-                    list.setAdapter(adapter);
-                }
-            }.execute(url);
+            Intent intentMyIntentService = new Intent(this, MyIntentService.class);
+            startService(intentMyIntentService.putExtra("URL", url));
+            IntentFilter intentFilter = new IntentFilter(MyIntentService.ACTION_MYINTENTSERVICE);
+            intentFilter.addCategory(Intent.CATEGORY_DEFAULT);
+            registerReceiver(myBroadcastReceiver, intentFilter);
         } else {
             Toast.makeText(MyActivity.this, "No network connection", Toast.LENGTH_SHORT).show();
             Log.d(DEBUG_TAG, "no network connection");
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        unregisterReceiver(myBroadcastReceiver);
+    }
+
+    public class MyBroadcastReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            ArrayList<String> titles = intent.getStringArrayListExtra("TITLE");
+            ArrayList<String> desc = intent.getStringArrayListExtra("DESCRIPTION");
+            ArrayList<String> links = intent.getStringArrayListExtra("LINK");
+            ArrayList<String> urls = intent.getStringArrayListExtra("URL");
+            for (int i = 0; i < titles.size(); i++) {
+                ContentValues cv = new ContentValues();
+                cv.put(MySQLiteDatabase.COLUMN_TITLE, titles.get(i));
+                cv.put(MySQLiteDatabase.COLUMN_LINK, links.get(i));
+                cv.put(MySQLiteDatabase.COLUMN_DESCRIPTION, desc.get(i));
+                cv.put(MySQLiteDatabase.COLUMN_URL, urls.get(i));
+                getContentResolver().insert(DB_URI, cv);
+
+            }
+            Log.d(DEBUG_TAG, "add" + titles.size());
         }
     }
 }
